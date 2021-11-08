@@ -163,7 +163,7 @@ plt.show()
 # - 41 Females and 23 Males without PD
 # - 81 Females and 107 Males with PD
 # 
-# Males are underrepresented in healthy group
+# Males are underrepresented in No PD group
 # 
 # Females are underrepresented in PD group
 
@@ -236,19 +236,19 @@ g = sns.pairplot(data=X_scaled.iloc[:, 2:23],
 plt.tight_layout()
 
 
-# In[16]:
+# In[130]:
 
 
 corr_matr = X_scaled.drop(columns=['id', 'gender']).corr(method='pearson')
 plt.figure(figsize=(10,10))
 sns.heatmap(corr_matr, cmap='coolwarm', square=True)
-plt.title("Pearson's correlation heatmap")
+plt.title("Pearson's correlation heatmap on scaled dataset")
 plt.show()
 
 
-# And the correlations after scaling have become bigger
+# And the correlations after scaling have become bigger (colors are more saturated)
 
-# # Cross-validation 
+# # Cross-validation scheme
 
 # Cross-validation in our data set requires stratifying by `class` and also grouping by `id` 
 
@@ -378,7 +378,7 @@ def resample_gender(X: pd.DataFrame, y: pd.Series) -> Tuple[pd.DataFrame, pd.Ser
     Parameters
     ----------
     X : Data set to resample
-    y : Data set class to resample
+    y : Data set class labels
     
     Returns
     -------
@@ -782,15 +782,15 @@ fig.show()
 
 # Let's find the optimal number of components
 
-# In[51]:
+# In[131]:
 
 
 EXPLAINED_VARIANCE = 0.99
 
-pca = PCA(n_components=EXPLAINED_VARIANCE).fit(X_scaled.drop(columns=['id']))
+pca = PCA(n_components=EXPLAINED_VARIANCE).fit(X_scaled.drop(columns=['id', 'gender']))
 
 
-# In[52]:
+# In[132]:
 
 
 plt.figure(figsize=(15, 10))
@@ -804,7 +804,7 @@ plt.legend()
 plt.tight_layout()
 
 
-# In[53]:
+# In[133]:
 
 
 n_components = len(pca.explained_variance_ratio_)
@@ -835,27 +835,27 @@ plt.show()
 
 # I would choose 150 number of components, that's  5 times less features, but they still explain most of the variance (around 95%)
 
-# In[54]:
+# In[134]:
 
 
 pca.explained_variance_ratio_[:150].sum()
 
 
-# Let's check how PCA affects our models. This time, even trees models are trained on scaled data, because we must scale the data before PCA
+# That's how `perform_pca` method works on our data (just an example to validate):
 
-# That's how PCA works on our data (just an example to validate):
-
-# In[55]:
+# In[135]:
 
 
 train_pca, test_pca = perform_pca(X_scaled[:600], X_scaled[600:], 150)
 
 
-# In[56]:
+# In[136]:
 
 
 train_pca
 
+
+# Let's check how PCA affects our models. This time, even trees models are trained on scaled data, because we must scale the data before PCA
 
 # In[57]:
 
@@ -918,7 +918,7 @@ models_results_pca
 
 # # Model tuning
 
-# As long as I use grouping, resampling and stratifying, I have to write my own wrapper transformer
+# As long as I use grouping, resampling and stratifying, I have to write my own wrapper transformer with `fit_resample` method
 
 # In[103]:
 
