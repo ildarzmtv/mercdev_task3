@@ -551,7 +551,7 @@ models_results = models_results.append(rf_cv)
 # In[80]:
 
 
-catboost_cv = cross_validate(CatBoostClassifier(cat_features=['gender'], verbose=False, random_seed=RANDOM_STATE), X, y, plot_cm=True)
+catboost_cv = cross_validate(CatBoostClassifier(depth=6, cat_features=['gender'], verbose=False, random_seed=RANDOM_STATE), X, y, plot_cm=True)
 
 
 # In[81]:
@@ -571,7 +571,7 @@ models_results = models_results.append(catboost_cv)
 # In[83]:
 
 
-lgbm_cv = cross_validate(LGBMClassifier(random_state=RANDOM_STATE), X, y, plot_cm=True)
+lgbm_cv = cross_validate(LGBMClassifier(max_depth=6, random_state=RANDOM_STATE), X, y, plot_cm=True)
 
 
 # In[84]:
@@ -591,7 +591,7 @@ models_results = models_results.append(lgbm_cv)
 # In[86]:
 
 
-xgb_cv = cross_validate(XGBClassifier(random_state=RANDOM_STATE, verbosity=0), X, y, plot_cm=True)
+xgb_cv = cross_validate(XGBClassifier(max_depth=6, random_state=RANDOM_STATE, verbosity=0), X, y, plot_cm=True)
 
 
 # In[87]:
@@ -644,15 +644,15 @@ models = [
           'X': X,
           'y': y}, 
          **setting),
-    dict({'estimator': CatBoostClassifier(cat_features=['gender'], verbose=False, random_seed=RANDOM_STATE),
+    dict({'estimator': CatBoostClassifier(depth=6, cat_features=['gender'], verbose=False, random_seed=RANDOM_STATE),
           'X': X,
           'y': y}, 
          **setting),
-    dict({'estimator': LGBMClassifier(random_state=RANDOM_STATE),
+    dict({'estimator': LGBMClassifier(max_depth=6, random_state=RANDOM_STATE),
           'X': X,
           'y': y}, 
          **setting),
-    dict({'estimator': XGBClassifier(verbosity=0, random_state=RANDOM_STATE),
+    dict({'estimator': XGBClassifier(max_depth=6, verbosity=0, random_state=RANDOM_STATE),
           'X': X,
           'y': y}, 
          **setting)
@@ -721,15 +721,15 @@ models = [
           'X': X,
           'y': y}, 
          **setting),
-    dict({'estimator': CatBoostClassifier(cat_features=['gender'], verbose=False, random_seed=RANDOM_STATE),
+    dict({'estimator': CatBoostClassifier(depth=6, cat_features=['gender'], verbose=False, random_seed=RANDOM_STATE),
           'X': X,
           'y': y}, 
          **setting),
-    dict({'estimator': LGBMClassifier(random_state=RANDOM_STATE),
+    dict({'estimator': LGBMClassifier(max_depth=6, random_state=RANDOM_STATE),
           'X': X,
           'y': y}, 
          **setting),
-    dict({'estimator': XGBClassifier(verbosity=0, random_state=RANDOM_STATE),
+    dict({'estimator': XGBClassifier(max_depth=6, verbosity=0, random_state=RANDOM_STATE),
           'X': X,
           'y': y}, 
          **setting)
@@ -881,15 +881,15 @@ models = [
           'X': X_scaled,
           'y': y}, 
          **setting),
-    dict({'estimator': CatBoostClassifier(verbose=False, random_seed=RANDOM_STATE),
+    dict({'estimator': CatBoostClassifier(depth=6, verbose=False, random_seed=RANDOM_STATE),
           'X': X_scaled,
           'y': y}, 
          **setting),
-    dict({'estimator': LGBMClassifier(random_state=RANDOM_STATE),
+    dict({'estimator': LGBMClassifier(max_depth=6, random_state=RANDOM_STATE),
           'X': X_scaled,
           'y': y}, 
          **setting),
-    dict({'estimator': XGBClassifier(verbosity=0, random_state=RANDOM_STATE),
+    dict({'estimator': XGBClassifier(max_depth=6, verbosity=0, random_state=RANDOM_STATE),
           'X': X_scaled,
           'y': y}, 
          **setting)
