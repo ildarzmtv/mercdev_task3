@@ -420,7 +420,7 @@ def resample_gender(X: pd.DataFrame, y: pd.Series) -> Tuple[pd.DataFrame, pd.Ser
     return X_resampled, y_resampled
 
 def perform_pca(X_train, X_test, explained_variance) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Performs PCA on 
+    """Performs PCA on X_train and X_test
     
     Parameters
     ----------
@@ -857,46 +857,34 @@ train_pca
 
 # Let's check how PCA affects our models. This time, even trees models are trained on scaled data, because we must scale the data before PCA
 
-# In[57]:
+# In[146]:
 
 
 setting = {
     'pca': 150,
+    'X': X_scaled,
+    'y': y
 }
 
 models = [
-    dict({'estimator': KNeighborsClassifier(),
-          'X': X_scaled,
-          'y': y}, 
+    dict({'estimator': KNeighborsClassifier()}, 
          **setting),
-    dict({'estimator': LogisticRegression(random_state=RANDOM_STATE),
-          'X': X_scaled,
-          'y': y}, 
+    dict({'estimator': LogisticRegression(random_state=RANDOM_STATE)}, 
          **setting),
-    dict({'estimator': DecisionTreeClassifier(max_depth=6, random_state=RANDOM_STATE),
-          'X': X_scaled,
-          'y': y}, 
+    dict({'estimator': DecisionTreeClassifier(max_depth=6, random_state=RANDOM_STATE)}, 
          **setting),
-    dict({'estimator': RandomForestClassifier(max_depth=7, random_state=RANDOM_STATE),
-          'X': X_scaled,
-          'y': y}, 
+    dict({'estimator': RandomForestClassifier(max_depth=7, random_state=RANDOM_STATE)}, 
          **setting),
-    dict({'estimator': CatBoostClassifier(depth=6, verbose=False, random_seed=RANDOM_STATE),
-          'X': X_scaled,
-          'y': y}, 
+    dict({'estimator': CatBoostClassifier(depth=6, verbose=False, random_seed=RANDOM_STATE)}, 
          **setting),
-    dict({'estimator': LGBMClassifier(max_depth=6, random_state=RANDOM_STATE),
-          'X': X_scaled,
-          'y': y}, 
+    dict({'estimator': LGBMClassifier(max_depth=6, random_state=RANDOM_STATE)}, 
          **setting),
-    dict({'estimator': XGBClassifier(max_depth=6, verbosity=0, random_state=RANDOM_STATE),
-          'X': X_scaled,
-          'y': y}, 
+    dict({'estimator': XGBClassifier(max_depth=6, verbosity=0, random_state=RANDOM_STATE)}, 
          **setting)
 ]
 
 
-# In[58]:
+# In[147]:
 
 
 models_results_pca = pd.DataFrame()
@@ -904,16 +892,18 @@ for model in models:
     models_results_pca = models_results_pca.append(cross_validate(**model))
 
 
-# In[59]:
+# In[148]:
 
 
-models_results_pca
+display_side_by_side([models_results, models_results_pca], 
+                     titles=['original data cv scores', 'pca data cv scores'])
 
 
 # So the results are not good, PCA negatively affects models scores. Some models are definetly overfitted (RFC, CatBoost)
 
 # As the result model I would choose LGBMClassifier with resampling.
-# - LGBMClassifier provides us with the best recall/precision tradeoff
+# - LGBMClassifier provides us with the best recall/precision tradeoff out-of-box
+# - LGBM learning is relatively fast (in comparison with other boostings), so the tuning will not take a lot of time and we can experiment more with that
 # - The intuition about resampling gender proportions in each class: training on resampled data will be more robust to test sets, that not look like train set (in terms of class/gender proportions). And i assume that the model will be used equally on males and females
 
 # # Model tuning
@@ -946,7 +936,7 @@ pipeline = Pipeline([
 # I will use F1 Weighted score in GridSearch, because it takes into account both Recall and Precision (for both classes).  
 # I do not use first class Recall for tuning, because the model will just classify almost all objects as 1 and that is a bad model
 
-# In[105]:
+# In[144]:
 
 
 params = {
@@ -961,7 +951,7 @@ params = {
 gs = GridSearchCV(pipeline,
                   param_grid=params,
                   cv=StratifiedGroupKFold(5, shuffle=True, random_state=RANDOM_STATE).split(X, y, groups=X['id']),
-                  scoring='f1_weighted')
+                  scoring='f1')
 
 
 # In[107]:
@@ -1009,7 +999,7 @@ params_specific = {
 gs_specific = GridSearchCV(pipeline,
                            param_grid=params_specific,
                            cv=StratifiedGroupKFold(5, shuffle=True, random_state=RANDOM_STATE).split(X, y, groups=X['id']),
-                           scoring='f1_weighted')
+                           scoring='f1')
 
 
 # In[126]:
