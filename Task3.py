@@ -37,7 +37,7 @@
 
 # # Import required libraries
 
-# In[67]:
+# In[1]:
 
 
 import numpy as np
@@ -48,6 +48,7 @@ from matplotlib import pyplot as plt
 
 import seaborn as sns
 
+from sklearn import set_config
 from sklearn.preprocessing import QuantileTransformer
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import StratifiedGroupKFold, GridSearchCV
@@ -102,15 +103,21 @@ sns.set_context("paper", rc={"font.size":12,
                              "legend.title_fontsize": 11}) 
 
 
+# In[4]:
+
+
+set_config(display='diagram')
+
+
 # # EDA
 
-# In[4]:
+# In[5]:
 
 
 data = pd.read_csv('archive/pd_speech_features.csv')
 
 
-# In[5]:
+# In[6]:
 
 
 data.info()
@@ -118,7 +125,7 @@ data.info()
 
 # There are 756 rows with a lot of columns - 755. Each person has 3 records, so there are 252 patients overall
 
-# In[6]:
+# In[7]:
 
 
 data.head()
@@ -209,7 +216,7 @@ plt.tight_layout()
 
 # First two features are `id` and `gender`, we don't need to tranform them
 
-# In[13]:
+# In[25]:
 
 
 scaler = gen_features(
@@ -218,7 +225,7 @@ scaler = gen_features(
 )
 
 
-# In[14]:
+# In[26]:
 
 
 scaling_mapper = DataFrameMapper(scaler, default=None, df_out=True)
@@ -227,7 +234,7 @@ X_scaled = scaling_mapper.fit_transform(X)
 
 # Pairplot of features after scaling:
 
-# In[15]:
+# In[27]:
 
 
 g = sns.pairplot(data=X_scaled.iloc[:, 2:23], 
@@ -236,7 +243,7 @@ g = sns.pairplot(data=X_scaled.iloc[:, 2:23],
 plt.tight_layout()
 
 
-# In[130]:
+# In[28]:
 
 
 corr_matr = X_scaled.drop(columns=['id', 'gender']).corr(method='pearson')
@@ -250,9 +257,9 @@ plt.show()
 
 # # Cross-validation scheme
 
-# Cross-validation in our data set requires stratifying by `class` and also grouping by `id` 
+# Cross-validation in our data set requires stratifying by `class` and also grouping by `id`. Records from one person can be very similar, so to prevent data leakage, we should group person's records
 
-# In[68]:
+# In[29]:
 
 
 def cross_validate(estimator, 
@@ -284,7 +291,7 @@ def cross_validate(estimator,
     cv_scores = {'Accuracy': [],
                  'Recall': [],
                  'Precision': [],
-                 'F1 Weighted': []}
+                 'F1': []}
     
     estimator_name = type(estimator).__name__
     
@@ -293,7 +300,7 @@ def cross_validate(estimator,
     fold = StratifiedGroupKFold(5, shuffle=True, random_state=RANDOM_STATE)
     
     for train_index, test_index in fold.split(X, y, groups=X['id']):
-        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+        X_train, X_test = X.iloc[train_index].drop(columns='id'), X.iloc[test_index].drop(columns='id')
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
         
         # transformations before training
@@ -304,7 +311,6 @@ def cross_validate(estimator,
         if pca:
             X_train, X_test = perform_pca(X_train, X_test, explained_variance=pca)
 
-        X_train, X_test = X_train.drop(columns='id'), X_test.drop(columns='id')
         estimator.fit(X_train, y_train)
 
         predictions = estimator.predict(X_test)
@@ -313,7 +319,7 @@ def cross_validate(estimator,
         cv_scores['Accuracy'].append(accuracy_score(y_test, predictions))
         cv_scores['Recall'].append(recall_score(y_test, predictions, pos_label=1))
         cv_scores['Precision'].append(precision_score(y_test, predictions, pos_label=1))
-        cv_scores['F1 Weighted'].append(f1_score(y_test, predictions, average='weighted'))
+        cv_scores['F1'].append(f1_score(y_test, predictions, average='binary'))
     
     # prints scores for each fold if True
     if print_fold_scores:
@@ -432,24 +438,20 @@ def perform_pca(X_train, X_test, explained_variance) -> Tuple[pd.DataFrame, pd.D
     X_train_pca : PCA-transformed train data set 
     y_test_pca : PCA-transformed test data set
     """
-    pca = PCA(n_components=explained_variance).fit(X_train.drop(columns=['id', 'gender']))
-    pca_train_data = pca.transform(X_train.drop(columns=['id', 'gender']))
-    pca_test_data = pca.transform(X_test.drop(columns=['id', 'gender']))
+    pca = PCA(n_components=explained_variance).fit(X_train.drop(columns='gender'))
+    pca_train_data = pca.transform(X_train.drop(columns='gender'))
+    pca_test_data = pca.transform(X_test.drop(columns='gender'))
     
     X_train_pca = pd.DataFrame.from_records(data=pca_train_data)
     
     #reset index to map id and gender to pca data
     X_train.reset_index(inplace=True)
-    
-    X_train_pca['id'] = X_train['id']
     X_train_pca['gender'] = X_train['gender']
     
     X_test_pca = pd.DataFrame.from_records(data=pca_test_data)
     
     #reset index to map id and gender to pca data
     X_test.reset_index(inplace=True)
-    
-    X_test_pca['id'] = X_test['id']
     X_test_pca['gender'] = X_test['gender']
     
     return X_train_pca, X_test_pca
@@ -474,13 +476,13 @@ def display_side_by_side(dfs: list, titles: list):
 
 # ## KNN
 
-# In[69]:
+# In[60]:
 
 
 models_results = cross_validate(KNeighborsClassifier(), X_scaled, y, plot_cm=True)
 
 
-# In[70]:
+# In[61]:
 
 
 models_results
@@ -488,19 +490,19 @@ models_results
 
 # ## LogReg
 
-# In[71]:
+# In[62]:
 
 
 lg_cv = cross_validate(LogisticRegression(random_state=RANDOM_STATE), X_scaled, y, plot_cm=True)
 
 
-# In[72]:
+# In[63]:
 
 
 lg_cv
 
 
-# In[73]:
+# In[64]:
 
 
 models_results = models_results.append(lg_cv)
@@ -508,19 +510,19 @@ models_results = models_results.append(lg_cv)
 
 # ## DT
 
-# In[74]:
+# In[65]:
 
 
 dt_cv = cross_validate(DecisionTreeClassifier(random_state=RANDOM_STATE, max_depth=6), X, y, plot_cm=True)
 
 
-# In[75]:
+# In[66]:
 
 
 dt_cv
 
 
-# In[76]:
+# In[67]:
 
 
 models_results = models_results.append(dt_cv)
@@ -528,19 +530,19 @@ models_results = models_results.append(dt_cv)
 
 # ## RF
 
-# In[77]:
+# In[68]:
 
 
-rf_cv = cross_validate(RandomForestClassifier(random_state=RANDOM_STATE, max_depth=7), X, y, plot_cm=True)
+rf_cv = cross_validate(RandomForestClassifier(random_state=RANDOM_STATE, max_depth=6), X, y, plot_cm=True)
 
 
-# In[78]:
+# In[69]:
 
 
 rf_cv
 
 
-# In[79]:
+# In[70]:
 
 
 models_results = models_results.append(rf_cv)
@@ -548,19 +550,19 @@ models_results = models_results.append(rf_cv)
 
 # ## CatBoost
 
-# In[80]:
+# In[71]:
 
 
 catboost_cv = cross_validate(CatBoostClassifier(depth=6, cat_features=['gender'], verbose=False, random_seed=RANDOM_STATE), X, y, plot_cm=True)
 
 
-# In[81]:
+# In[72]:
 
 
 catboost_cv
 
 
-# In[82]:
+# In[73]:
 
 
 models_results = models_results.append(catboost_cv)
@@ -568,19 +570,19 @@ models_results = models_results.append(catboost_cv)
 
 # ## LightGBM
 
-# In[83]:
+# In[74]:
 
 
 lgbm_cv = cross_validate(LGBMClassifier(max_depth=6, random_state=RANDOM_STATE), X, y, plot_cm=True)
 
 
-# In[84]:
+# In[75]:
 
 
 lgbm_cv
 
 
-# In[85]:
+# In[76]:
 
 
 models_results = models_results.append(lgbm_cv)
@@ -588,19 +590,19 @@ models_results = models_results.append(lgbm_cv)
 
 # ## XGBoost
 
-# In[86]:
+# In[77]:
 
 
 xgb_cv = cross_validate(XGBClassifier(max_depth=6, random_state=RANDOM_STATE, verbosity=0), X, y, plot_cm=True)
 
 
-# In[87]:
+# In[78]:
 
 
 xgb_cv
 
 
-# In[88]:
+# In[79]:
 
 
 models_results = models_results.append(xgb_cv)
@@ -608,19 +610,19 @@ models_results = models_results.append(xgb_cv)
 
 # __Models comparison:__
 
-# In[89]:
+# In[80]:
 
 
 models_results
 
 
-# LGBMClassifier gives the best Recall - Precision ratio and the best accuracy
+# LGBMClassifier gives the best Recall - Precision ratio and the best accuracy out-of-box
 
 # # Upsampling with SMOTE
 
 # Now let's try to cross validate with SMOTE upsampling
 
-# In[90]:
+# In[81]:
 
 
 setting = {
@@ -640,7 +642,7 @@ models = [
           'X': X,
           'y': y}, 
          **setting),
-    dict({'estimator': RandomForestClassifier(max_depth=7, random_state=RANDOM_STATE),
+    dict({'estimator': RandomForestClassifier(max_depth=6, random_state=RANDOM_STATE),
           'X': X,
           'y': y}, 
          **setting),
@@ -659,7 +661,7 @@ models = [
 ]
 
 
-# In[91]:
+# In[82]:
 
 
 models_results_upsampling = pd.DataFrame()
@@ -667,7 +669,7 @@ for model in models:
     models_results_upsampling = models_results_upsampling.append(cross_validate(**model))
 
 
-# In[92]:
+# In[83]:
 
 
 display_side_by_side([models_results, models_results_upsampling], 
@@ -680,7 +682,7 @@ display_side_by_side([models_results, models_results_upsampling],
 
 # This is how resampling method works:
 
-# In[93]:
+# In[84]:
 
 
 X_resampled, y_resampled = resample_gender(X_scaled, y)
@@ -691,13 +693,13 @@ sns.heatmap(pd.crosstab(y_resampled, X_resampled['gender']).divide(3).astype('in
             annot=True,
             fmt='d')
 
-plt.title('Gender proportions in each class after resampling')
+plt.title('Number of males and females in each class after resampling')
 plt.show()
 
 
 # Now let's cross validae on resampled data, so gender proportion in each class are equal
 
-# In[94]:
+# In[85]:
 
 
 setting = {
@@ -736,7 +738,7 @@ models = [
 ]
 
 
-# In[95]:
+# In[86]:
 
 
 models_results_resampling = pd.DataFrame()
@@ -744,7 +746,7 @@ for model in models:
     models_results_resampling = models_results_resampling.append(cross_validate(**model))
 
 
-# In[96]:
+# In[87]:
 
 
 display_side_by_side([models_results, models_results_resampling], 
@@ -755,7 +757,7 @@ display_side_by_side([models_results, models_results_resampling],
 
 # __CV scores on original data, upsampled data and resampled data compared:__
 
-# In[97]:
+# In[88]:
 
 
 display_side_by_side([models_results, models_results_upsampling, models_results_resampling], 
@@ -768,7 +770,7 @@ display_side_by_side([models_results, models_results_upsampling, models_results_
 
 # Let's look how the data is distributed in 3 dimensions (using PCA)
 
-# In[50]:
+# In[89]:
 
 
 pca_data = PCA(n_components=3).fit_transform(X_scaled.drop(columns='id'))
@@ -782,7 +784,7 @@ fig.show()
 
 # Let's find the optimal number of components
 
-# In[131]:
+# In[90]:
 
 
 EXPLAINED_VARIANCE = 0.99
@@ -790,7 +792,7 @@ EXPLAINED_VARIANCE = 0.99
 pca = PCA(n_components=EXPLAINED_VARIANCE).fit(X_scaled.drop(columns=['id', 'gender']))
 
 
-# In[132]:
+# In[91]:
 
 
 plt.figure(figsize=(15, 10))
@@ -804,7 +806,7 @@ plt.legend()
 plt.tight_layout()
 
 
-# In[133]:
+# In[92]:
 
 
 n_components = len(pca.explained_variance_ratio_)
@@ -835,7 +837,7 @@ plt.show()
 
 # I would choose 150 number of components, that's  5 times less features, but they still explain most of the variance (around 95%)
 
-# In[134]:
+# In[93]:
 
 
 pca.explained_variance_ratio_[:150].sum()
@@ -843,13 +845,13 @@ pca.explained_variance_ratio_[:150].sum()
 
 # That's how `perform_pca` method works on our data (just an example to validate):
 
-# In[135]:
+# In[94]:
 
 
 train_pca, test_pca = perform_pca(X_scaled[:600], X_scaled[600:], 150)
 
 
-# In[136]:
+# In[95]:
 
 
 train_pca
@@ -857,7 +859,7 @@ train_pca
 
 # Let's check how PCA affects our models. This time, even trees models are trained on scaled data, because we must scale the data before PCA
 
-# In[146]:
+# In[96]:
 
 
 setting = {
@@ -884,7 +886,7 @@ models = [
 ]
 
 
-# In[147]:
+# In[97]:
 
 
 models_results_pca = pd.DataFrame()
@@ -892,14 +894,14 @@ for model in models:
     models_results_pca = models_results_pca.append(cross_validate(**model))
 
 
-# In[148]:
+# In[98]:
 
 
 display_side_by_side([models_results, models_results_pca], 
                      titles=['original data cv scores', 'pca data cv scores'])
 
 
-# So the results are not good, PCA negatively affects models scores. Some models are definetly overfitted (RFC, CatBoost)
+# So the results are not good, PCA negatively affects F1 score and accuracy overall. Some models are definetly overfitted (RFC, CatBoost)
 
 # As the result model I would choose LGBMClassifier with resampling.
 # - LGBMClassifier provides us with the best recall/precision tradeoff out-of-box
@@ -908,23 +910,20 @@ display_side_by_side([models_results, models_results_pca],
 
 # # Model tuning
 
+# ## LGBMClassifier
+
 # As long as I use grouping, resampling and stratifying, I have to write my own wrapper transformer with `fit_resample` method
 
-# In[103]:
+# In[99]:
 
 
 class CustomResamplingTransformer():
     
     def fit_resample(self, X, y):
-        X_copy = X.copy()
-        
-        # can't drop id column, because input shape must match output shape
-        X_copy['id'] = -1
-        
-        return resample_gender(X_copy, y)
+        return resample_gender(X, y)
 
 
-# In[104]:
+# In[100]:
 
 
 pipeline = Pipeline([
@@ -933,103 +932,247 @@ pipeline = Pipeline([
 ])
 
 
-# I will use F1 Weighted score in GridSearch, because it takes into account both Recall and Precision (for both classes).  
+# I will use F1 score in GridSearch, because it takes into account both Recall and Precision for 1 class.  
 # I do not use first class Recall for tuning, because the model will just classify almost all objects as 1 and that is a bad model
 
-# In[144]:
+# In[101]:
 
 
-params = {
+params_1 = {
     'estimator__num_leaves':[10, 20, 30, 40, 60, 80, 100],
     'estimator__n_estimators': [200, 250, 300, 350],
     'estimator__max_depth':[-1, 4, 6, 8, 10, 15]}
 
 
+# In[102]:
+
+
+gs_1 = GridSearchCV(pipeline,
+                    param_grid=params_1,
+                    cv=StratifiedGroupKFold(5, shuffle=True, random_state=RANDOM_STATE).split(X, y, groups=X['id']),
+                    scoring='f1')
+
+
+# In[103]:
+
+
+gs_1.fit(X.drop(columns='id'), y)
+
+
+# In[105]:
+
+
+gs_1.best_score_
+
+
 # In[106]:
 
 
-gs = GridSearchCV(pipeline,
-                  param_grid=params,
-                  cv=StratifiedGroupKFold(5, shuffle=True, random_state=RANDOM_STATE).split(X, y, groups=X['id']),
-                  scoring='f1')
+gs_1.best_params_
 
 
-# In[107]:
+# In[113]:
 
 
-gs.fit(X, y)
+def extract_estimator_params(gs_params: dict) -> dict:
+    '''Extracts estimator params from GridSearchCV best_params_
+    
+    Parameters
+    ----------
+    gs_params : GridSearchCV best_params_ attribute
+    
+    Returns
+    -------
+    estimator_params : dict, containing estimator's params
+    '''
+    estimator_params = {k.split('__')[-1]: v for k, v in gs_params.items()}
+    return estimator_params
 
 
-# In[109]:
+# In[114]:
 
 
-gs.best_params_
+estimator_1_params = extract_estimator_params(gs_1.best_params_)
 
 
-# In[110]:
+# In[115]:
 
 
-gs.best_score_
+estimator_1_params
 
 
-# In[123]:
+# In[116]:
 
 
-cross_validate(LGBMClassifier(random_state=RANDOM_STATE, max_depth=4, n_estimators=350, num_leaves=20), X, y, resampling=True, print_fold_scores=True, plot_cm=True)
+cross_validate(LGBMClassifier(random_state=RANDOM_STATE, **estimator_1_params), X, y, resampling=True, print_fold_scores=True, plot_cm=True)
 
 
 # Both precision and recall has increased
 # 
-# We can also see that, for example, first and the last fold scores differs a lot. And that is happend because of small dataset, i guess 
+# We can also see that, for example, the third and the last fold scores differs a lot. And that is happend because of small dataset, i guess 
 
 # The second lap of GridSearch (now we specify parameters in smaller limits):
 
-# In[124]:
+# In[117]:
 
 
-params_specific = {
+params_2 = {
     'estimator__num_leaves':[16, 18, 20, 22, 24],
     'estimator__n_estimators': [330, 340, 350, 360, 370],
     'estimator__max_depth':[3, 4, 5]}
 
 
+# In[118]:
+
+
+gs_2 = GridSearchCV(pipeline,
+                    param_grid=params_2,
+                    cv=StratifiedGroupKFold(5, shuffle=True, random_state=RANDOM_STATE).split(X, y, groups=X['id']),
+                    scoring='f1')
+
+
+# In[119]:
+
+
+gs_2.fit(X.drop(columns='id'), y)
+
+
+# In[120]:
+
+
+gs_2.best_score_
+
+
+# In[121]:
+
+
+gs_2.best_params_
+
+
+# In[122]:
+
+
+estimator_2_params = extract_estimator_params(gs_2.best_params_)
+
+
+# In[123]:
+
+
+cross_validate(LGBMClassifier(random_state=RANDOM_STATE, **estimator_2_params), X, y, print_fold_scores=True, plot_cm=True, resampling=True)
+
+
+# __The third lap of GridSearch:__
+
+# In[124]:
+
+
+params_3 = {
+    'estimator__num_leaves':[20],
+    'estimator__n_estimators': [315, 320, 325, 330, 335],
+    'estimator__max_depth':[5]}
+
+
 # In[125]:
 
 
-gs_specific = GridSearchCV(pipeline,
-                           param_grid=params_specific,
-                           cv=StratifiedGroupKFold(5, shuffle=True, random_state=RANDOM_STATE).split(X, y, groups=X['id']),
-                           scoring='f1')
+gs_3 = GridSearchCV(pipeline,
+                    param_grid=params_3,
+                    cv=StratifiedGroupKFold(5, shuffle=True, random_state=RANDOM_STATE).split(X, y, groups=X['id']),
+                    scoring='f1')
 
 
 # In[126]:
 
 
-gs_specific.fit(X, y)
+gs_3.fit(X.drop(columns='id'), y)
 
 
 # In[127]:
 
 
-gs_specific.best_score_
+gs_3.best_score_
 
 
 # In[128]:
 
 
-gs_specific.best_params_
+gs_3.best_params_
 
 
-# In[129]:
+# In[130]:
 
 
-cross_validate(LGBMClassifier(random_state=RANDOM_STATE, max_depth=4, n_estimators=370, num_leaves=16), X, y, print_fold_scores=True, plot_cm=True, resampling=True)
+estimator_3_params = extract_estimator_params(gs_3.best_params_)
 
 
-# And the second lap also helped a little bit.  
-# Pretty good scores, I think.
+# In[131]:
 
-# # Results 
+
+cross_validate(LGBMClassifier(random_state=RANDOM_STATE, **estimator_3_params), X, y, print_fold_scores=True, plot_cm=True, resampling=True)
+
+
+# The scores didn't change, so the final params are
+
+# In[132]:
+
+
+estimator_3_params
+
+
+# ## Logistic Regression
+
+# Let's try to tune Logistic Rgression to see how such a simple model can perform compared to more complex model like LGBM
+
+# I will remove resampling from pipeline
+
+# In[133]:
+
+
+weights_for_0_class = np.linspace(0.5, 0.6, 20)
+
+params_logreg = [
+    {'penalty' : ['l1', 'l2', 'none', 'elasticnet'],
+     'C' : np.linspace(-0.002, 0.002, 20),
+     'class_weight': ['none'] + [{0:x, 1:1.0-x} for x in weights_for_0_class]}
+]
+
+
+# In[134]:
+
+
+gs_logreg = GridSearchCV(LogisticRegression(random_state=RANDOM_STATE),
+                         param_grid=params_logreg,
+                         cv=StratifiedGroupKFold(5, shuffle=True, random_state=RANDOM_STATE).split(X, y, groups=X['id']),
+                         scoring='f1')
+
+
+# In[135]:
+
+
+gs_logreg.fit(X_scaled.drop(columns='id'), y)
+
+
+# In[136]:
+
+
+gs_logreg.best_score_
+
+
+# In[137]:
+
+
+gs_logreg.best_params_
+
+
+# In[140]:
+
+
+cross_validate(LogisticRegression(random_state=RANDOM_STATE, **gs_logreg.best_params_), X_scaled, y, print_fold_scores=True, plot_cm=True)
+
+
+# That's a nice score for a LogisticRegression. But we see that it is less consistent on different folds in comparison to LGBM
+
+# # Results
 
 # What has been done in this work:
 # - Simple EDA (features are already extracted)
@@ -1038,17 +1181,17 @@ cross_validate(LGBMClassifier(random_state=RANDOM_STATE, max_depth=4, n_estimato
 # - Upsampling using SMOTENC (badly affects the scores)
 # - Resampling gender proportions in each class (used in the result model) 
 # - PCA (badly affects the scores)
-# - Model tuning
+# - Model tuning (LGBM and LogisticRegression)
 
 # So we have the following model
 
 # LGBMClassifier on resampled data with the parameters:
-# - max_depth: 4
-# - n_estimators: 370
-# - num_leaves: 16
+# - max_depth: 5
+# - n_estimators: 320
+# - num_leaves: 20
 
 # And the mean cv scores of this model are:
 # - Accuracy: 0.858719
-# - Recall: 0.957427
-# - Precision: 0.866142
-# - F1 Weighted: 0.849669
+# - Recall: 0.959212
+# - Precision: 0.865519
+# - F1: 0.909701
