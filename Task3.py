@@ -135,7 +135,7 @@ data.head()
 # 
 # > Various speech signal processing algorithms including Time Frequency Features, Mel Frequency Cepstral Coefficients (MFCCs), Wavelet Transform based Features, Vocal Fold Features and TWQT features have been applied to the speech recordings of Parkinson's Disease (PD) patients to extract clinically useful information for PD assessment.
 # 
-# Without diving into the domain area, I cannot extract features better than the authors of the related paper.
+# Without diving into the domain area, I cannot say aything about this features and their impact
 
 # In[8]:
 
@@ -245,18 +245,6 @@ g = sns.pairplot(data=X_scaled.iloc[:, 2:23],
 plt.tight_layout()
 
 
-# In[17]:
-
-
-corr_matr = X_scaled.drop(columns=['id', 'gender']).corr(method='pearson')
-plt.figure(figsize=(10,10))
-sns.heatmap(corr_matr, cmap='coolwarm', square=True)
-plt.title("Pearson's correlation heatmap on scaled dataset")
-plt.show()
-
-
-# And the correlations after scaling have become bigger (colors are more saturated)
-
 # # Cross-validation scheme
 
 # Cross-validation in our data set requires stratifying by `class` and also grouping by `id`. Records from one person can be very similar, so to prevent data leakage, we should group person's records
@@ -286,7 +274,8 @@ def cross_validate(estimator,
               If False - scaling is not used
     upsampling : Set to True to upsample train data in each fold
     resampling : Set to True to resample train data in each fold
-    pca : Used as n_components parameter in PCA. If False - pca is not used 
+    pca : Used as n_components parameter in PCA. 
+          If False - pca is not used 
     
     Returns
     -------
@@ -313,17 +302,16 @@ def cross_validate(estimator,
             scaling.fit(X_train)
             X_train = scaling.transform(X_train)
             X_test = scaling.transform(X_test)
-        if resampling:
-            X_train, y_train = resample_gender(X_train, y_train)
         if upsampling:
             X_train, y_train = upsample(X_train, y_train)
+        if resampling:
+            X_train, y_train = resample_gender(X_train, y_train)
         if pca:
             X_train, X_test = perform_pca(X_train, X_test, explained_variance=pca)
 
         estimator.fit(X_train, y_train)
 
         predictions = estimator.predict(X_test)
-        probabilities = estimator.predict_proba(X_test)
         
         cv_scores['Accuracy'].append(accuracy_score(y_test, predictions))
         cv_scores['Recall'].append(recall_score(y_test, predictions, pos_label=1))
@@ -380,8 +368,8 @@ def upsample(X: pd.DataFrame, y: pd.Series) -> Tuple[pd.DataFrame, pd.Series]:
     y_upsampled : upsampled dataset class labels
     """
     smotenc = SMOTENC(categorical_features=[X.columns.get_loc("gender")], 
-                    random_state=RANDOM_STATE, 
-                    sampling_strategy=1)
+                      random_state=RANDOM_STATE, 
+                      sampling_strategy=1)
     
     X_upsampled, y_upsampled = smotenc.fit_resample(X, y)
     
@@ -453,13 +441,13 @@ def perform_pca(X_train, X_test, explained_variance) -> Tuple[pd.DataFrame, pd.D
     
     X_train_pca = pd.DataFrame.from_records(data=pca_train_data)
     
-    #reset index to map id and gender to pca data
+    #reset index to map id and gender to pca data (train)
     X_train.reset_index(inplace=True)
     X_train_pca['gender'] = X_train['gender']
     
     X_test_pca = pd.DataFrame.from_records(data=pca_test_data)
     
-    #reset index to map id and gender to pca data
+    #reset index to map id and gender to pca data (test)
     X_test.reset_index(inplace=True)
     X_test_pca['gender'] = X_test['gender']
     
@@ -485,13 +473,13 @@ def display_side_by_side(dfs: list, titles: list):
 
 # ## KNN
 
-# In[103]:
+# In[133]:
 
 
 models_results = cross_validate(KNeighborsClassifier(), X, y, scaling=scaling_mapper, plot_cm=True)
 
 
-# In[104]:
+# In[134]:
 
 
 models_results
@@ -499,19 +487,19 @@ models_results
 
 # ## LogReg
 
-# In[49]:
+# In[135]:
 
 
 lg_cv = cross_validate(LogisticRegression(random_state=RANDOM_STATE), X, y, scaling=scaling_mapper, plot_cm=True)
 
 
-# In[50]:
+# In[136]:
 
 
 lg_cv
 
 
-# In[51]:
+# In[137]:
 
 
 models_results = models_results.append(lg_cv)
@@ -519,19 +507,19 @@ models_results = models_results.append(lg_cv)
 
 # ## DT
 
-# In[27]:
+# In[138]:
 
 
-dt_cv = cross_validate(DecisionTreeClassifier(random_state=RANDOM_STATE, max_depth=6), X, y, plot_cm=True)
+dt_cv = cross_validate(DecisionTreeClassifier(max_depth=6, random_state=RANDOM_STATE), X, y, plot_cm=True)
 
 
-# In[28]:
+# In[139]:
 
 
 dt_cv
 
 
-# In[29]:
+# In[140]:
 
 
 models_results = models_results.append(dt_cv)
@@ -539,19 +527,19 @@ models_results = models_results.append(dt_cv)
 
 # ## RF
 
-# In[30]:
+# In[141]:
 
 
-rf_cv = cross_validate(RandomForestClassifier(random_state=RANDOM_STATE, max_depth=6), X, y, plot_cm=True)
+rf_cv = cross_validate(RandomForestClassifier(max_depth=6, random_state=RANDOM_STATE), X, y, plot_cm=True)
 
 
-# In[31]:
+# In[142]:
 
 
 rf_cv
 
 
-# In[32]:
+# In[143]:
 
 
 models_results = models_results.append(rf_cv)
@@ -559,19 +547,19 @@ models_results = models_results.append(rf_cv)
 
 # ## CatBoost
 
-# In[33]:
+# In[144]:
 
 
 catboost_cv = cross_validate(CatBoostClassifier(depth=6, cat_features=['gender'], verbose=False, random_seed=RANDOM_STATE), X, y, plot_cm=True)
 
 
-# In[34]:
+# In[145]:
 
 
 catboost_cv
 
 
-# In[35]:
+# In[146]:
 
 
 models_results = models_results.append(catboost_cv)
@@ -579,19 +567,19 @@ models_results = models_results.append(catboost_cv)
 
 # ## LightGBM
 
-# In[36]:
+# In[147]:
 
 
 lgbm_cv = cross_validate(LGBMClassifier(max_depth=6, random_state=RANDOM_STATE), X, y, plot_cm=True)
 
 
-# In[37]:
+# In[148]:
 
 
 lgbm_cv
 
 
-# In[38]:
+# In[149]:
 
 
 models_results = models_results.append(lgbm_cv)
@@ -599,19 +587,19 @@ models_results = models_results.append(lgbm_cv)
 
 # ## XGBoost
 
-# In[39]:
+# In[150]:
 
 
-xgb_cv = cross_validate(XGBClassifier(max_depth=6, random_state=RANDOM_STATE, verbosity=0), X, y, plot_cm=True)
+xgb_cv = cross_validate(XGBClassifier(max_depth=6, verbosity=0, random_state=RANDOM_STATE), X, y, plot_cm=True)
 
 
-# In[40]:
+# In[151]:
 
 
 xgb_cv
 
 
-# In[41]:
+# In[152]:
 
 
 models_results = models_results.append(xgb_cv)
@@ -619,13 +607,13 @@ models_results = models_results.append(xgb_cv)
 
 # __Models comparison:__
 
-# In[55]:
+# In[155]:
 
 
-models_results.sort_values(by='F1', ascending=False, inplace=True)
+models_results.sort_index(inplace=True)
 
 
-# In[56]:
+# In[156]:
 
 
 models_results
@@ -673,10 +661,10 @@ models_results_upsampling = pd.DataFrame()
 for model in models:
     models_results_upsampling = models_results_upsampling.append(cross_validate(**model))
     
-models_results_upsampling.sort_values(by='F1', ascending=False, inplace=True)
+models_results_upsampling.sort_index(inplace=True)
 
 
-# In[58]:
+# In[159]:
 
 
 display_side_by_side([models_results, models_results_upsampling], 
@@ -748,10 +736,10 @@ models_results_resampling = pd.DataFrame()
 for model in models:
     models_results_resampling = models_results_resampling.append(cross_validate(**model))
     
-models_results_resampling.sort_values(by='F1', ascending=False, inplace=True)
+models_results_resampling.sort_index(inplace=True)
 
 
-# In[65]:
+# In[160]:
 
 
 display_side_by_side([models_results, models_results_resampling], 
@@ -762,7 +750,7 @@ display_side_by_side([models_results, models_results_resampling],
 
 # __CV scores on original data, upsampled data and resampled data compared:__
 
-# In[66]:
+# In[161]:
 
 
 display_side_by_side([models_results, models_results_upsampling, models_results_resampling], 
@@ -862,14 +850,20 @@ train_pca, test_pca = perform_pca(X_scaled.drop(columns=['id'])[:600], X_scaled.
 test_pca
 
 
+# In[162]:
+
+
+del train_pca, test_pca
+
+
 # Let's check how PCA affects our models. This time, even trees models are trained on scaled data, because we must scale the data before PCA
 
-# In[82]:
+# In[163]:
 
 
 setting = {
     'pca': 150,
-    'X': X_scaled,
+    'X': X,
     'y': y
 }
 
@@ -893,17 +887,17 @@ models = [
 ]
 
 
-# In[84]:
+# In[164]:
 
 
 models_results_pca = pd.DataFrame()
 for model in models:
     models_results_pca = models_results_pca.append(cross_validate(**model))
     
-models_results_pca.sort_values(by='F1', ascending=False, inplace=True)
+models_results_pca.sort_index(inplace=True)
 
 
-# In[85]:
+# In[165]:
 
 
 display_side_by_side([models_results, models_results_pca], 
@@ -943,6 +937,8 @@ pipeline = Pipeline([
 
 # I will use F1 score in GridSearch, because it takes into account both Recall and Precision for 1 class.  
 # I do not use first class Recall for tuning, because the model will just classify almost all objects as 1 and that is a bad model
+
+# __The first lap of GridSearch__
 
 # In[101]:
 
@@ -1020,7 +1016,7 @@ cross_validate(LGBMClassifier(random_state=RANDOM_STATE, **estimator_1_params), 
 # 
 # We can also see that, for example, the third and the last fold scores differs a lot. And that is happend because of small dataset, i guess 
 
-# The second lap of GridSearch (now we specify parameters in smaller limits):
+# __The second lap of GridSearch (now we specify parameters in smaller limits):__
 
 # In[117]:
 
