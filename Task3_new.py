@@ -37,7 +37,7 @@
 
 # # Import required libraries
 
-# In[2]:
+# In[1]:
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
@@ -68,13 +68,13 @@ warnings.filterwarnings("ignore")
 sns.set_theme()
 
 
-# In[3]:
+# In[2]:
 
 
 RANDOM_STATE = 42
 
 
-# In[4]:
+# In[3]:
 
 
 sns.set_context("paper", rc={"font.size":12, 
@@ -87,7 +87,7 @@ sns.set_context("paper", rc={"font.size":12,
                              "legend.title_fontsize": 11}) 
 
 
-# In[5]:
+# In[4]:
 
 
 set_config(display='diagram')
@@ -95,13 +95,13 @@ set_config(display='diagram')
 
 # # EDA
 
-# In[6]:
+# In[5]:
 
 
 data = pd.read_csv('archive/pd_speech_features.csv')
 
 
-# In[7]:
+# In[6]:
 
 
 data.info()
@@ -111,7 +111,7 @@ data.info()
 
 # ## Target variable
 
-# In[8]:
+# In[7]:
 
 
 sizes = dict(data['class'].value_counts())
@@ -137,7 +137,7 @@ plt.show()
 # - TQWT Features: Col323 to Col754
 # - Class: Col755
 
-# In[9]:
+# In[8]:
 
 
 BASELINE = list(data.iloc[:, 2:23].columns.values)
@@ -152,7 +152,7 @@ TQWT = list(data.iloc[:, 322:754].columns.values)
 
 # ## Correlations
 
-# In[10]:
+# In[9]:
 
 
 def plot_correlation_matrix(data, title):
@@ -163,7 +163,7 @@ def plot_correlation_matrix(data, title):
     plt.show()
 
 
-# In[11]:
+# In[10]:
 
 
 plot_correlation_matrix(data, f" Pearson's correlations")
@@ -175,10 +175,10 @@ plot_correlation_matrix(data, f" Pearson's correlations")
 
 # It’s not completely correct to calculate the correlation coefficient in binary classification problem using __Pearson's__ method. For a perfect predictor, we expect a Pearson coefficient absolute value equal to 1, but we could not achieve this value if we have one binary feature. It’s not important, however. We are using Pearson correlation coefficient to __sort our features__ from the most relevant to the least one, so as long as the coefficient calculation is the same, we can compare the features between them.
 
-# In[12]:
+# In[11]:
 
 
-def check_attribute_group(str: value):
+def check_attribute_group(value: str):
     """Checks the name of feature and returns the corresponding attribute group
     
     Parameters
@@ -204,14 +204,14 @@ def check_attribute_group(str: value):
     else: return 'GENERAL'
 
 
-# In[13]:
+# In[12]:
 
 
 target_correlations = pd.DataFrame(data.drop(columns='class').corrwith(data['class']).apply(np.abs).sort_values(ascending=False), columns=["Pearson's correlation"])
 target_correlations['Attribute group'] = target_correlations.index.map(check_attribute_group)
 
 
-# In[14]:
+# In[13]:
 
 
 def display_side_by_side(dfs: list, titles: list):
@@ -232,7 +232,7 @@ def display_side_by_side(dfs: list, titles: list):
 
 # Top 100 features by Pearson's correlation:
 
-# In[15]:
+# In[14]:
 
 
 display_side_by_side([target_correlations.nlargest(100, columns="Pearson's correlation").iloc[:50],
@@ -242,7 +242,7 @@ display_side_by_side([target_correlations.nlargest(100, columns="Pearson's corre
 
 # Let's see which attribute group is represented the most in top 100 features
 
-# In[16]:
+# In[15]:
 
 
 target_correlations.nlargest(100, columns="Pearson's correlation")['Attribute group'].value_counts()
@@ -255,14 +255,14 @@ target_correlations.nlargest(100, columns="Pearson's correlation")['Attribute gr
 
 # ## Baseline features
 
-# In[17]:
+# In[16]:
 
 
 features = BASELINE
 plot_correlation_matrix(data[features + ['class']], f" Pearson's correlations")
 
 
-# In[18]:
+# In[17]:
 
 
 data[BASELINE].head(10)
@@ -276,7 +276,7 @@ data[BASELINE].head(10)
 
 # ## Intensity parameters  
 
-# In[19]:
+# In[18]:
 
 
 features = INTENSITY
@@ -287,7 +287,7 @@ plot_correlation_matrix(data[features + ['class']], f" Pearson's correlations")
 
 # ## MFCC
 
-# In[20]:
+# In[19]:
 
 
 features = MFCC
@@ -321,7 +321,7 @@ plot_correlation_matrix(data[features + ['class']], f" Pearson's correlations")
 # 
 # There are also boxplots for this features for each class to see the tails and skewness of distributions
 
-# In[21]:
+# In[20]:
 
 
 # start from 0, max - 5
@@ -376,7 +376,7 @@ plt.show()
 # Kaiser energy of both the approximation and detailed coefficients
 # are calculated resulting in 182 WT features related with F0
 
-# In[22]:
+# In[21]:
 
 
 features = WAVELET
@@ -394,7 +394,7 @@ plot_correlation_matrix(data[features + ['class']], f" Pearson's correlations")
 
 # Features of this type are obtained from raw F0, using TQWT with 36 levels of decomposition. And we see sets of 36 features that are correlated with each other 
 
-# In[23]:
+# In[22]:
 
 
 features = TQWT
@@ -403,7 +403,7 @@ plot_correlation_matrix(data[features + ['class']], f" Pearson's correlations")
 
 # 11 and 12 levels of decompositions are in top correlated features, let's look on them:
 
-# In[26]:
+# In[23]:
 
 
 # start from 0, max - 11
@@ -451,7 +451,7 @@ plt.show()
 
 # # Splitting the data
 
-# In[27]:
+# In[24]:
 
 
 X = data.drop(columns='class')
@@ -464,13 +464,13 @@ y = data['class']
 # 
 # I think 80% of the data is enough for the model to be trained, so the test is 20%
 
-# In[28]:
+# In[25]:
 
 
 train_indicies, test_indicies = next(StratifiedGroupKFold(5, shuffle=True, random_state=RANDOM_STATE).split(X, y, groups=X['id']))
 
 
-# In[29]:
+# In[26]:
 
 
 X_train, X_test = X.iloc[train_indicies], X.iloc[test_indicies]
@@ -487,7 +487,7 @@ y_train, y_test = y.iloc[train_indicies], y.iloc[test_indicies]
 
 # Some helper functions:
 
-# In[30]:
+# In[27]:
 
 
 def get_scores(name, y_train, y_pred_train, y_test, y_pred_test):
@@ -525,11 +525,11 @@ def get_scores(name, y_train, y_pred_train, y_test, y_pred_test):
     return scores_df
 
 def evaluate_model(model, 
-                   str: name, 
-                   pd.DataFrame: X_train, 
-                   pd.Series: y_train, 
-                   pd.DataFrame: X_test, 
-                   pd.Series: y_test):
+                   name: str, 
+                   X_train: pd.DataFrame, 
+                   y_train: pd.Series, 
+                   X_test: pd.DataFrame, 
+                   y_test: pd.Series):
     """Evaluates model's performance on train and test data by printing 
     classification report and plotting confusion matrix
     
@@ -586,7 +586,7 @@ def plot_confusion_matrix(y_true: pd.Series,
 # 
 # GridSearch uses 5 folds on training set, so 20% of our 80% train sample is used for validation 
 
-# In[31]:
+# In[28]:
 
 
 pipeline = Pipeline([
@@ -595,7 +595,7 @@ pipeline = Pipeline([
 ])
 
 
-# In[32]:
+# In[29]:
 
 
 weights_for_0_class = np.linspace(0.5, 0.6, 20)
@@ -613,31 +613,31 @@ gs_logreg = GridSearchCV(pipeline,
                          n_jobs=-1)
 
 
-# In[33]:
+# In[30]:
 
 
 gs_logreg.fit(X_train.drop(columns='id'), y_train)
 
 
-# In[34]:
+# In[31]:
 
 
 gs_logreg.best_params_
 
 
-# In[35]:
+# In[32]:
 
 
 gs_logreg.best_estimator_
 
 
-# In[38]:
+# In[33]:
 
 
 scaler_results = evaluate_model(gs_logreg.best_estimator_, 'StandardScaler', X_train.drop(columns='id'), y_train, X_test.drop(columns='id'), y_test)
 
 
-# In[39]:
+# In[34]:
 
 
 scaler_results
@@ -645,13 +645,9 @@ scaler_results
 
 # __Comaprison of scaling methods:__ 
 
-# In[668]:
+# ![image.png](attachment:273fecc2-12ad-4152-b2af-99ec3f764f08.png)
 
-
-scaling_comparison
-
-
-# And the `StandardScaler` works better than others. What's interesting is that more robust methods (RobustScaler and QuantileTransformer) provide us with more overfitting, the gap between train and test scores is bigger.  
+# And the `StandardScaler` works better than others. What's interesting is that more robust methods (RobustScaler and QuantileTransformer) overfit model more than StandardScaler and MinMaxScaler, the gap between train and test scores is bigger.  
 # This model will be considered as the baseline model, and since it is not really overfitted, we can stay with that train/test split further
 
 # # Feature selection
@@ -664,12 +660,7 @@ scaling_comparison
 
 # For each feature selection method i tuned models with 50, 100, 150, 200, 250 features and that is the results:
 
-# In[792]:
-
-
-display_side_by_side([mrmr_comparison, rfe_comparison], 
-                     titles=['MRMR', 'RFE'])
-
+# ![image.png](attachment:bde9d848-99bb-401b-8d45-f8e6541d02f6.png)
 
 # For MRMR method i would choose 150 features as the optimal number, because the Recall is raised, while Precision is still pretty good.  
 # For RFE, 150 features is also the best choice in my opinion, because the Recall and F1 both increased
@@ -680,7 +671,7 @@ display_side_by_side([mrmr_comparison, rfe_comparison],
 
 # Our final model consists of feature scaling with StandardScaler, feature selection with RFE (150 features) and LogisticRegression
 
-# In[40]:
+# In[35]:
 
 
 model = gs_logreg.best_estimator_
@@ -689,7 +680,7 @@ rfe.fit(X_train.drop(columns='id'), y_train)
 selected_features = rfe.get_feature_names_out()
 
 
-# In[41]:
+# In[36]:
 
 
 pipeline = Pipeline([
@@ -714,19 +705,19 @@ gs_logreg_fs = GridSearchCV(pipeline,
 gs_logreg_fs.fit(X_train[selected_features], y_train)
 
 
-# In[42]:
+# In[37]:
 
 
 gs_logreg_fs.best_params_
 
 
-# In[43]:
+# In[38]:
 
 
 rfe_score = evaluate_model(gs_logreg_fs.best_estimator_, f'RFE (n=150)', X_train[selected_features], y_train, X_test[selected_features], y_test)
 
 
-# In[86]:
+# In[39]:
 
 
 rfe_score
@@ -734,13 +725,13 @@ rfe_score
 
 # Now let's see which features are presented in selected ones
 
-# In[44]:
+# In[40]:
 
 
 attribute_types = np.array(list(map(check_attribute_group, selected_features)))
 
 
-# In[45]:
+# In[41]:
 
 
 unique, counts = np.unique(attribute_types, return_counts=True)
@@ -749,13 +740,13 @@ print(np.asarray((unique, counts)).T)
 
 # `TQWT` and `MFCC` features presented the most in selected features. They are also in top of feature weights:
 
-# In[65]:
+# In[42]:
 
 
 feature_weights = pd.DataFrame.from_records(list(zip(selected_features, *gs_logreg_fs.best_estimator_.named_steps.clf.coef_)), columns=['Feature', 'Weight'])
 
 
-# In[84]:
+# In[43]:
 
 
 feature_weights['Weight'] = feature_weights['Weight'].apply(np.abs)
@@ -764,7 +755,7 @@ feature_weights['Atribute group'] = feature_weights['Feature'].apply(check_attri
 
 # Top 50 features by weight:
 
-# In[85]:
+# In[44]:
 
 
 feature_weights.sort_values(by='Weight', ascending=False, ignore_index=True).iloc[:50]
